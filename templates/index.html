@@ -1,0 +1,207 @@
+<html>
+    <head>
+        <title>Blockchain Dice</title>
+        <style>
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                padding-bottom: 300px;
+            }
+
+            .game {
+                width: 700px;
+                border: 1px solid #000000;
+                padding: 16px;
+            }
+
+            #games {
+                display: block;
+            }
+
+            #blockchain {
+                display: none;
+            }
+
+            #spinner {
+                position: fixed;
+                top: 32px;
+                right: 32px;
+                display: none;
+                border: 8px solid #cccccc;
+                border-top: 8px solid #dddddd;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                animation: spin 2s linear infinite;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    </head>
+    <body>
+        <div id="spinner"></div>
+        <div class="container">
+            <h1>Blockchain Dice</h1>
+            <p>
+                <button id="game-initialize">New game</button>
+                <button id="view-blockchain">View blockchain</button>
+            </p>
+            <div id="games"></div>
+            <pre id="blockchain"></>
+        </div>
+        <script type=text/javascript src="{{url_for('static', filename='jquery-3.6.0.min.js') }}"></script>
+        <script type=text/javascript>
+            function refresh() {
+                $('#spinner').show()
+                $.ajax({
+                    url: 'http://localhost:5001',
+                    type: 'GET',
+                }).done(response => {
+                    $('#games').html('')
+                    $('#blockchain').html(JSON.stringify(response, null, 4))
+                    const games = response.reduce((previous, current) => {
+                        return previous[current.content.game_id] === undefined
+                            ? { ...previous, [current.content.game_id]: {...current.content} }
+                            : { ...previous, [current.content.game_id]: { ...previous[current.content.game_id], ...current.content } }
+                    }, {})
+
+                    for (const [key, value] of Object.entries(games)) {
+                        var content = ''
+                        switch (value.type) {
+                            case 'game_initialize': {
+                                content = `
+                                    <p>
+                                        Encrypted service random (service's seed): ${value.encrypted_service_random}<br/>
+                                    </p>
+                                    <div class="game-actions">
+                                        Player1 participation (seed)
+                                        <input id="game-${value.game_id}-player-1-random-number" value=${Math.floor(Math.random()*100)+1} /><br/>
+                                        Player2 participation (seed)
+                                        <input id="game-${value.game_id}-player-2-random-number" value=${Math.floor(Math.random()*100)+1} /><br/>
+                                        Player3 participation (seed)
+                                        <input id="game-${value.game_id}-player-3-random-number" value=${Math.floor(Math.random()*100)+1} /><br/>
+                                        <br/>
+                                        <button class="game-start" data-game-id="${value.game_id}">Start game</button>
+                                    </div>
+                                `
+                                break
+                            }
+                            case 'game_start': {
+                                const playerRandomNumbers = value.player_random_numbers.map(p => `Player${p.player_id}=${p.random_number}`). join(', ')
+                                content = `
+                                    <p>
+                                        Encrypted service random (service's seed): ${value.encrypted_service_random}<br/>
+                                        Player random numbers (player's seeds): ${playerRandomNumbers}<br/>
+                                    </p>
+                                    <div class="game-actions">
+                                        Player1 guess
+                                        <input id="game-${value.game_id}-player-1-guess" value=${Math.floor(Math.random()*(7-1))+1} /><br/>
+                                        Player2 guess
+                                        <input id="game-${value.game_id}-player-2-guess" value=${Math.floor(Math.random()*(7-1))+1} /><br/>
+                                        Player3 guess
+                                        <input id="game-${value.game_id}-player-3-guess" value=${Math.floor(Math.random()*(7-1))+1} /><br/>
+                                        <br/>
+                                        <button class="game-end" data-game-id="${value.game_id}">Roll the dice</button>
+                                    </div>
+                                `
+                                break
+                            }
+                            case 'game_end': {
+                                const playerRandomNumbers = value.player_random_numbers.map(p => `Player${p.player_id}=${p.random_number}`). join(', ')
+                                const winners = []
+                                const losers = []
+                                const playerGuesses = value.game_details.player_guesses.map(p => {
+                                    if (p.guess == value.random_number) {
+                                        winners.push(p.player_id)
+                                    } else {
+                                        losers.push(p.player_id)
+                                    }
+                                    return `Player${p.player_id}=${p.guess}`
+                                })
+                                content = `
+                                    <p>
+                                        Encrypted service random (service's seed): ${value.encrypted_service_random}<br/>
+                                        Player random numbers (player's seeds): ${playerRandomNumbers}<br/>
+                                        Secret key to decrypt service random: ${value.secret_key}
+                                        <br/><br/>
+                                        Game: ${value.game_details.game_name}<br/>
+                                        Guesses: ${playerGuesses.join(', ')}<br/>
+                                        Result:  ${value.random_number}<br/>
+                                        Winners:  ${winners.map(w => 'Player'+w).join(', ')}<br/>
+                                        Losers:  ${losers.map(l => 'Player'+l).join(', ')}
+                                    </p>
+                                `
+                                break
+                            }
+                        }
+                        $('#games').append(`
+                            <div class="game">
+                                <div class="game-header">
+                                    <h2>Game ${value.game_id}</h2>
+                                </div>
+                                <div class="game-content">${content}</div>
+                            </div>
+                        `)
+                    }
+                    $('#spinner').hide()
+                })
+            }
+
+            refresh()
+
+            $('#game-initialize').on('click', () => {
+                $('#spinner').show()
+                $.ajax({
+                    url: 'http://localhost:5000/game-initialize',
+                    type: 'POST',
+                }).always(refresh)
+            })
+
+            $('#view-blockchain').on('click', () => {
+                $('#game-initialize').toggle()
+                $('#games').toggle()
+                $('#blockchain').toggle()
+            })
+
+            $('#games').on('click', '.game-start', e => {
+                $('#spinner').show()
+                const game_id = $(e.currentTarget).data('game-id')
+                const player_random_numbers = [
+                    {player_id: 1, random_number: Number($(`#game-${game_id}-player-1-random-number`).val())},
+                    {player_id: 2, random_number: Number($(`#game-${game_id}-player-2-random-number`).val())},
+                    {player_id: 3, random_number: Number($(`#game-${game_id}-player-3-random-number`).val())},
+                ]
+
+                $.ajax({
+                    url: 'http://localhost:5000/game-start',
+                    type: 'POST',
+                    data: JSON.stringify({game_id, player_random_numbers}),
+                    contentType: 'application/json',
+                }).always(refresh)
+            })
+
+            $('#games').on('click', '.game-end', e => {
+                $('#spinner').show()
+                const game_id = $(e.currentTarget).data('game-id')
+                const game_details = {
+                    game_name: 'Blockchain Dice',
+                    player_guesses: [
+                        {player_id: 1, guess: Number($(`#game-${game_id}-player-1-guess`).val())},
+                        {player_id: 2, guess: Number($(`#game-${game_id}-player-2-guess`).val())},
+                        {player_id: 3, guess: Number($(`#game-${game_id}-player-3-guess`).val())},
+                    ]
+                }
+                $.ajax({
+                    url: 'http://localhost:5000/game-end',
+                    type: 'POST',
+                    data: JSON.stringify({game_id, game_details}),
+                    contentType: 'application/json',
+                }).always(refresh)
+            })
+        </script>
+    </body>
+</html>
