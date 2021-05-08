@@ -6,7 +6,6 @@ import requests
 GAME_INITIALIZE = 'game_initialize'
 GAME_START = 'game_start'
 GAME_END = 'game_end'
-BLOCKCHAIN_URL = 'http://localhost:5001'
 
 
 app = Flask(__name__)
@@ -34,29 +33,28 @@ _headers = {
 ok = ('',  200, _headers)
 bad_request = ('',  400, _headers)
 
-
 def _handle_response(response):
     if response.status_code >= 400:
         return bad_request
     return ok
 
 
-def _get_next_game_id():
+def _get_next_game_id(selected_node):
     game_id = 1
-    blockchain = requests.get(url=BLOCKCHAIN_URL).json()
+    blockchain = requests.get(url=selected_node).json()
     for block in blockchain:
         if block['content']['type'] == GAME_INITIALIZE:
             game_id = block['content']['game_id'] + 1
     return game_id
 
 
-def _get_game_blocks(game_id):
+def _get_game_blocks(selected_node, game_id):
     initialization_block = None
     start_block = None
 
-    blockchain = requests.get(url=BLOCKCHAIN_URL).json()
+    blockchain = requests.get(url=selected_node).json()
     for block in blockchain:
-        if block['content']['game_id'] == game_id:
+        if block['content'].get('game_id') == game_id:
             if block['content']['type'] == GAME_INITIALIZE:
                 initialization_block = block
             if block['content']['type'] == GAME_START:
@@ -96,11 +94,12 @@ def game_initialize():
     if request.method == 'OPTIONS':
         return ok
 
-    game_id = _get_next_game_id()
+    selected_node = request.json['selected_node']
+    game_id = _get_next_game_id(selected_node)
     encrypted_service_random = _encrypt(random.randrange(0, 100))
 
     response = requests.post(
-        url=BLOCKCHAIN_URL,
+        url=selected_node,
         json=dict(type=GAME_INITIALIZE, game_id=game_id, encrypted_service_random=encrypted_service_random)
     )
     return _handle_response(response=response)
@@ -111,11 +110,12 @@ def game_start():
     if request.method == 'OPTIONS':
         return ok
 
+    selected_node = request.json['selected_node']
     game_id = request.json['game_id']
     player_random_numbers = request.json['player_random_numbers']
 
     response = requests.post(
-        url=BLOCKCHAIN_URL,
+        url=selected_node,
         json=dict(type=GAME_START, game_id=game_id, player_random_numbers=player_random_numbers)
     )
 
@@ -127,10 +127,11 @@ def game_end():
     if request.method == 'OPTIONS':
         return ok
 
+    selected_node = request.json['selected_node']
     game_id = request.json['game_id']
     game_details = request.json['game_details']
 
-    initialization_block, start_block = _get_game_blocks(game_id)
+    initialization_block, start_block = _get_game_blocks(selected_node, game_id)
 
     if initialization_block is None or start_block is None:
         return bad_request
@@ -138,7 +139,7 @@ def game_end():
     random_number = _calculate_random_number(initialization_block=initialization_block, start_block=start_block)
 
     response = requests.post(
-        url=BLOCKCHAIN_URL,
+        url=selected_node,
         json=dict(type=GAME_END, game_id=game_id, random_number=random_number, secret_key=SECRET_KEY, game_details=game_details)
     )
 

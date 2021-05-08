@@ -26,12 +26,27 @@ In this step the dice is rolled by revealing the secret key of the game service 
 
 ## Running
 
-In a shell:
+Blockchain Dice is a prototype of blockchain implementation of the traditional dice game.
+
+- game_service - Flask application which handles business logic
+- blockchain - Flask application which wraps a decentralized and immutable data model
+- user interface
+
+**You need to open a shell for each command.**
+
+`blockchain.py [node's own port] [port to register node with]`
+
+You can run as many as you want, just give different node's own port for each one.
+Note that the software will become slower with every added node.
+
 ```
-python blockchain.py
+python blockchain.py 5001
+python blockchain.py 5002 5001
+python blockchain.py 5003 5002
+python blockchain.py 5004 5001
 ```
 
-And in another shell:
+`game_service.py`
 ```
 python game_service.py
 ```

@@ -46,29 +46,48 @@
         <div id="spinner"></div>
         <div class="container">
             <h1>Blockchain Dice</h1>
+            <div id="blockchain-inputs"></div>
             <p>
                 <button id="game-initialize">New game</button>
                 <button id="view-blockchain">View blockchain</button>
             </p>
             <div id="games"></div>
-            <pre id="blockchain"></>
+            <pre id="blockchain"></pre>
         </div>
         <script type=text/javascript src="{{url_for('static', filename='jquery-3.6.0.min.js') }}"></script>
         <script type=text/javascript>
+            var selected_node = 'http://localhost:5001'
+
+            function updateBlockchains(nodes) {
+                $('#blockchain-inputs').html('')
+                for (node of nodes) {
+                    checked = node == selected_node
+                    $('#blockchain-inputs').append(`
+                        <input type="radio" ${checked ? 'checked' : ''} name="blockchain" value="${node}" />
+                        <label>${node}</label> <br/>
+                    `)
+                }
+            }
             function refresh() {
                 $('#spinner').show()
+                $('button, input').prop('disabled', true)
                 $.ajax({
-                    url: 'http://localhost:5001',
+                    url: selected_node,
                     type: 'GET',
                 }).done(response => {
                     $('#games').html('')
                     $('#blockchain').html(JSON.stringify(response, null, 4))
+                    const nodes = []
                     const games = response.reduce((previous, current) => {
+                        if (current.content.type === 'register')  {
+                            nodes.push(current.content.node_url)
+                            nodes.sort()
+                            return previous
+                        }
                         return previous[current.content.game_id] === undefined
                             ? { ...previous, [current.content.game_id]: {...current.content} }
                             : { ...previous, [current.content.game_id]: { ...previous[current.content.game_id], ...current.content } }
                     }, {})
-
                     for (const [key, value] of Object.entries(games)) {
                         var content = ''
                         switch (value.type) {
@@ -138,26 +157,40 @@
                                 break
                             }
                         }
-                        $('#games').append(`
-                            <div class="game">
-                                <div class="game-header">
-                                    <h2>Game ${value.game_id}</h2>
+                        if (content != '') {
+                            $('#games').append(`
+                                <div class="game">
+                                    <div class="game-header">
+                                        <h2>Game ${value.game_id}</h2>
+                                    </div>
+                                    <div class="game-content">${content}</div>
                                 </div>
-                                <div class="game-content">${content}</div>
-                            </div>
-                        `)
+                            `)
+                        }
                     }
+
+                    updateBlockchains(nodes)
                     $('#spinner').hide()
+                    $('button, input').prop('disabled', false)
                 })
             }
 
             refresh()
 
+            $('#blockchain-inputs').on('change', (e) => {
+                $('#games').html('')
+                $('#blockchain').html('')
+                selected_node = $(e.target).val()
+                refresh()
+            })
             $('#game-initialize').on('click', () => {
                 $('#spinner').show()
+                $('button, input').prop('disabled', true)
                 $.ajax({
                     url: 'http://localhost:5000/game-initialize',
                     type: 'POST',
+                    data: JSON.stringify({selected_node}),
+                    contentType: 'application/json',
                 }).always(refresh)
             })
 
@@ -169,6 +202,7 @@
 
             $('#games').on('click', '.game-start', e => {
                 $('#spinner').show()
+                $('button, input').prop('disabled', true)
                 const game_id = $(e.currentTarget).data('game-id')
                 const player_random_numbers = [
                     {player_id: 1, random_number: Number($(`#game-${game_id}-player-1-random-number`).val())},
@@ -179,13 +213,14 @@
                 $.ajax({
                     url: 'http://localhost:5000/game-start',
                     type: 'POST',
-                    data: JSON.stringify({game_id, player_random_numbers}),
+                    data: JSON.stringify({selected_node, game_id, player_random_numbers}),
                     contentType: 'application/json',
                 }).always(refresh)
             })
 
             $('#games').on('click', '.game-end', e => {
                 $('#spinner').show()
+                $('button, input').prop('disabled', true)
                 const game_id = $(e.currentTarget).data('game-id')
                 const game_details = {
                     game_name: 'Blockchain Dice',
@@ -198,7 +233,7 @@
                 $.ajax({
                     url: 'http://localhost:5000/game-end',
                     type: 'POST',
-                    data: JSON.stringify({game_id, game_details}),
+                    data: JSON.stringify({selected_node, game_id, game_details}),
                     contentType: 'application/json',
                 }).always(refresh)
             })
