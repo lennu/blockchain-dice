@@ -46,6 +46,7 @@
         <div id="spinner"></div>
         <div class="container">
             <h1>Blockchain Dice</h1>
+            <p>Select the blockchain node you want to operate with:</p>
             <div id="blockchain-inputs"></div>
             <p>
                 <button id="game-initialize">New game</button>
@@ -63,8 +64,8 @@
                 for (node of nodes) {
                     checked = node == selected_node
                     $('#blockchain-inputs').append(`
-                        <input type="radio" ${checked ? 'checked' : ''} name="blockchain" value="${node}" />
-                        <label>${node}</label> <br/>
+                        <input type="radio" ${checked ? 'checked' : ''} name="blockchain" value="${node}" id="node-${node}" />
+                        <label for="node-${node}">${node}</label> <br/>
                     `)
                 }
             }
