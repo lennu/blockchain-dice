@@ -34,16 +34,16 @@ Blockchain Dice is a prototype of blockchain implementation of the traditional d
 
 **You need to open a shell for each command.**
 
-`blockchain.py [node's own port] [port to register node with]`
+`blockchain.py [node's own port] [url to register node with]`
 
-You can run as many as you want, just give different node's own port for each one.
-Note that the software will become slower with every added node.
+You can run as many `blockchain.py` as you want, just give different node's own port for each one.
+Note that currently the software will become slower with every added node.
 
 ```
 python blockchain.py 5001
-python blockchain.py 5002 5001
-python blockchain.py 5003 5002
-python blockchain.py 5004 5001
+python blockchain.py 5002 http://localhost:5001
+python blockchain.py 5003 http://localhost:5002
+python blockchain.py 5004 http://localhost:5001
 ```
 
 `game_service.py`

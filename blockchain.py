@@ -19,14 +19,14 @@ _blockchain = []
 
 
 node_port = None
-register_port = None
+register_url = None
 if len(sys.argv) == 1:
     exit()
 elif len(sys.argv) == 2:
     node_port = sys.argv[1]
 elif len(sys.argv) == 3:
     node_port = sys.argv[1]
-    register_port = sys.argv[2]
+    register_url = sys.argv[2]
 
 
 def _sha256sum(content):
@@ -143,9 +143,9 @@ def get():
 
 
 register_content = dict(type=REGISTER, node_url=f'http://localhost:{node_port}')
-if register_port is not None:
+if register_url is not None:
     response = requests.post(
-        url=f'http://localhost:{register_port}/register',
+        url=f'{register_url}/register',
         json=register_content
     )
     _overwrite(response.json())
