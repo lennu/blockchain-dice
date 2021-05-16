@@ -109,7 +109,7 @@ def _run_smart_contracts(content):
     if content.get('game_id') and content['type'] in [GAME_INITIALIZE, GAME_START, GAME_END]:
         return _game_transaction(content)
     else:
-        return null
+        return None
 
 
 headers = {'Access-Control-Allow-Origin': '*'}

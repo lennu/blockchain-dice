@@ -32,7 +32,7 @@ Blockchain Dice is a prototype of blockchain implementation of the traditional d
 - blockchain - Flask application which wraps a decentralized and immutable data model
 - user interface
 
-**You need to open a shell for each command.**
+**You need to open a shell for each command and wait for registering to complete before starting another node.**
 
 `blockchain.py [node's own port] [url to register node with]`
 
